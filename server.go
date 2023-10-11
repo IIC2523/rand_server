@@ -26,37 +26,33 @@ type Response struct {
 	Subdirectories []string `json:"subdirectories"`
 }
 
-func buildRandTree(nodes int, depth int, number int, lucky int) *Node {
+func buildRandTree(depth int, numberPtr *int, lucky int) *Node {
 	if depth == 0 {
 		return nil
 	}
 	node := new(Node)
-	node.Number = number
-	if number == 0 {
+	node.Number = *numberPtr
+	if *numberPtr == 0 {
 		node.Name = "index"
 	} else {
-		node.Name = "d" + strconv.Itoa(number)
+		node.Name = "d" + strconv.Itoa(*numberPtr)
 	}
-	if number == lucky {
+	if *numberPtr == lucky {
 		node.Files = append(node.Files, "gopher.jpg")
 	} else {
 		for i := 0; i < rand.Intn(10); i++ {
-			node.Files = append(node.Files, "file"+strconv.Itoa(i)+strconv.Itoa(number)+".txt")
+			node.Files = append(node.Files, "file"+strconv.Itoa(i)+strconv.Itoa(*numberPtr)+".txt")
 		}
 	}
-	if nodes > 0 {
-		number++
-		node.Left = buildRandTree(nodes-1, depth-1, number, lucky)
-		if node.Left != nil {
-			node.Subdirectories = append(node.Subdirectories, node.Left.Name)
-		}
+	*numberPtr++
+	node.Left = buildRandTree(depth-1, numberPtr, lucky)
+	if node.Left != nil {
+		node.Subdirectories = append(node.Subdirectories, node.Left.Name)
 	}
-	if nodes > 0 {
-		number++
-		node.Right = buildRandTree(nodes-1, depth-1, number, lucky)
-		if node.Right != nil {
-			node.Subdirectories = append(node.Subdirectories, node.Right.Name)
-		}
+
+	node.Right = buildRandTree(depth-1, numberPtr, lucky)
+	if node.Right != nil {
+		node.Subdirectories = append(node.Subdirectories, node.Right.Name)
 	}
 	return node
 }
@@ -156,15 +152,26 @@ func main() {
 
 	flag.IntVar(&mode, "m", 0, "Mode: 0 for build, 1 for serve")
 	flag.IntVar(&depth, "d", 0, "Depth of tree")
-	flag.IntVar(&nodes, "n", 0, "Number of nodes")
 	flag.IntVar(&port, "p", 8080, "Port to listen on")
-
 	flag.Parse()
 
 	if mode == 0 {
+		if depth == 0 {
+			fmt.Println("Depth required")
+			return
+		}
+		if depth >= 27 {
+			fmt.Println("Depth must be less than 31")
+			return
+		}
+
+		nodes = (1 << uint(depth)) - 1
+
+		number := 0
+
 		fmt.Println("Building tree...")
 		lucky := rand.Intn(nodes)
-		tree := buildRandTree(nodes, depth, 0, lucky)
+		tree := buildRandTree(depth, &number, lucky)
 		hashMap := make(map[string]Response)
 		hashMap = treeToHashMap(tree, hashMap)
 		storeHashMap(hashMap)
