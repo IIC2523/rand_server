@@ -26,7 +26,7 @@ type Response struct {
 	Subdirectories []string `json:"subdirectories"`
 }
 
-func buildRandTree(nodes int, depth int, numberPtr *int, lucky int) *Node {
+func buildRandTree(depth int, numberPtr *int, lucky int) *Node {
 	if depth == 0 {
 		return nil
 	}
@@ -45,17 +45,14 @@ func buildRandTree(nodes int, depth int, numberPtr *int, lucky int) *Node {
 		}
 	}
 	*numberPtr++
-	if nodes > 0 {
-		node.Left = buildRandTree(nodes-1, depth-1, numberPtr, lucky)
-		if node.Left != nil {
-			node.Subdirectories = append(node.Subdirectories, node.Left.Name)
-		}
+	node.Left = buildRandTree(depth-1, numberPtr, lucky)
+	if node.Left != nil {
+		node.Subdirectories = append(node.Subdirectories, node.Left.Name)
 	}
-	if nodes > 0 {
-		node.Right = buildRandTree(nodes-1, depth-1, numberPtr, lucky)
-		if node.Right != nil {
-			node.Subdirectories = append(node.Subdirectories, node.Right.Name)
-		}
+
+	node.Right = buildRandTree(depth-1, numberPtr, lucky)
+	if node.Right != nil {
+		node.Subdirectories = append(node.Subdirectories, node.Right.Name)
 	}
 	return node
 }
@@ -155,16 +152,26 @@ func main() {
 
 	flag.IntVar(&mode, "m", 0, "Mode: 0 for build, 1 for serve")
 	flag.IntVar(&depth, "d", 0, "Depth of tree")
-	flag.IntVar(&nodes, "n", 0, "Number of nodes")
 	flag.IntVar(&port, "p", 8080, "Port to listen on")
-
 	flag.Parse()
-	number := 0
 
 	if mode == 0 {
+		if depth == 0 {
+			fmt.Println("Depth required")
+			return
+		}
+		if depth >= 27 {
+			fmt.Println("Depth must be less than 31")
+			return
+		}
+
+		nodes = (1 << uint(depth)) - 1
+
+		number := 0
+
 		fmt.Println("Building tree...")
 		lucky := rand.Intn(nodes)
-		tree := buildRandTree(nodes, depth, &number, lucky)
+		tree := buildRandTree(depth, &number, lucky)
 		hashMap := make(map[string]Response)
 		hashMap = treeToHashMap(tree, hashMap)
 		storeHashMap(hashMap)
