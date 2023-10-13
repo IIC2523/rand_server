@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
+	"math"
 	"math/rand"
 	"net/http"
 	"os"
@@ -21,22 +22,16 @@ type Node struct {
 	Right          *Node
 }
 
+var number int
+
 type Response struct {
 	Files          []string `json:"files"`
 	Subdirectories []string `json:"subdirectories"`
 }
 
-func buildRandTree(nodes int, depth int, number int, lucky int) *Node {
-	if depth == 0 {
-		return nil
-	}
+func buildRandTree(depth int, lucky int) *Node {
 	node := new(Node)
 	node.Number = number
-	if number == 0 {
-		node.Name = "index"
-	} else {
-		node.Name = "d" + strconv.Itoa(number)
-	}
 	if number == lucky {
 		node.Files = append(node.Files, "gopher.jpg")
 	} else {
@@ -44,19 +39,26 @@ func buildRandTree(nodes int, depth int, number int, lucky int) *Node {
 			node.Files = append(node.Files, "file"+strconv.Itoa(i)+strconv.Itoa(number)+".txt")
 		}
 	}
-	if nodes > 0 {
-		number++
-		node.Left = buildRandTree(nodes-1, depth-1, number, lucky)
-		if node.Left != nil {
-			node.Subdirectories = append(node.Subdirectories, node.Left.Name)
-		}
+	if number == 0 {
+		node.Name = "index"
+	} else {
+		node.Name = "d" + strconv.Itoa(number)
 	}
-	if nodes > 0 {
-		number++
-		node.Right = buildRandTree(nodes-1, depth-1, number, lucky)
-		if node.Right != nil {
-			node.Subdirectories = append(node.Subdirectories, node.Right.Name)
-		}
+	if depth == 0 {
+		return node
+	}
+	// Build left
+	number++
+	node.Left = buildRandTree(depth-1, lucky)
+	if node.Left != nil {
+		node.Subdirectories = append(node.Subdirectories, node.Left.Name)
+	}
+
+	// Build right
+	number++
+	node.Right = buildRandTree(depth-1, lucky)
+	if node.Right != nil {
+		node.Subdirectories = append(node.Subdirectories, node.Right.Name)
 	}
 	return node
 }
@@ -115,7 +117,6 @@ func loadHashMap() map[string]Response {
 		split := strings.Split(line, "&")
 		key = split[0]
 		data = split[1]
-		fmt.Println(key + " + " + data)
 		err := json.Unmarshal([]byte(data), &value)
 		if err != nil {
 			fmt.Println(err)
@@ -125,11 +126,7 @@ func loadHashMap() map[string]Response {
 		key = ""
 		data = ""
 		value = Response{}
-		fmt.Println(hashMap[key])
-		fmt.Println("index:")
-		fmt.Println(hashMap["index"])
 	}
-	fmt.Println(hashMap)
 	return hashMap
 }
 
@@ -150,21 +147,27 @@ func listener(port int, treeMap map[string]Response) {
 	http.ListenAndServe(":"+strconv.Itoa(port), nil)
 }
 
+func powInt(x, y int) int {
+	return int(math.Pow(float64(x), float64(y)))
+}
+
 func main() {
 
 	var mode, depth, nodes, port int
 
 	flag.IntVar(&mode, "m", 0, "Mode: 0 for build, 1 for serve")
 	flag.IntVar(&depth, "d", 0, "Depth of tree")
-	flag.IntVar(&nodes, "n", 0, "Number of nodes")
 	flag.IntVar(&port, "p", 8080, "Port to listen on")
 
 	flag.Parse()
 
+	nodes = powInt(2, depth+1) - 3
+
 	if mode == 0 {
 		fmt.Println("Building tree...")
+		number = 0
 		lucky := rand.Intn(nodes)
-		tree := buildRandTree(nodes, depth, 0, lucky)
+		tree := buildRandTree(depth, lucky)
 		hashMap := make(map[string]Response)
 		hashMap = treeToHashMap(tree, hashMap)
 		storeHashMap(hashMap)
@@ -173,7 +176,6 @@ func main() {
 	} else if mode == 1 {
 		fmt.Println("Launching server on port " + strconv.Itoa(port) + "...")
 		treeMap := loadHashMap()
-		fmt.Println(treeMap)
 		listener(port, treeMap)
 		return
 	} else {
