@@ -42,7 +42,7 @@ func buildRandTree(nodes *int, depth int, number *int) *Node {
 			node.Files = append(node.Files, "file"+strconv.Itoa(i)+strconv.Itoa(*number)+".txt")
 		}
 	}
-	if *nodes > 0 && rand.Intn(10) < 8{
+	if *nodes > 0 && rand.Intn(10) < 8 {
 		*number++
 		*nodes--
 		node.Left = buildRandTree(nodes, depth-1, number)
@@ -131,7 +131,7 @@ func listener(port int, treeMap map[string]Response) {
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		uri := r.URL.Path[1:]
 		fmt.Println(uri)
-		if uri[len(uri)-1:] == "/" {
+		if len(uri) > 0 && uri[len(uri)-1:] == "/" {
 			uri = uri[:len(uri)-1]
 		}
 		split := strings.Split(uri, "/")
@@ -160,7 +160,7 @@ func main() {
 		if nodes == 0 || depth == 0 {
 			fmt.Println("Invalid arguments, depth and nodes must be greater than 0")
 			return
-		}	
+		}
 		maxNodes := 0
 		for i := 0; i < depth; i++ {
 			maxNodes += 1 << uint(i)
